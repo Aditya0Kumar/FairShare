@@ -1,16 +1,27 @@
-# Bugs found
+# Bugs Found & Fixed
 
-Add one section per issue. Bug 1 is filled in to show the format — fix it, then write what you changed. Copy the blank template for the rest.
+This document tracks all the identified bugs in FairShare and details the steps taken to fix them.
 
-Keep this file in the repo and **commit it** with your fixes.
+## Table of Contents
+- [Bug 1: Expense List Sorting](#bug-1-expense-list-sorting)
+- [Bug 2: Paid By Filter Type Mismatch](#bug-2-paid-by-filter-type-mismatch)
+- [Bug 3: Deductions for Non-Participating Payers](#bug-3-deductions-for-non-participating-payers)
+- [Bug 4: Missing Transfers on Exact Settlement Matches](#bug-4-missing-transfers-on-exact-settlement-matches)
+- [Bug 5: Rounding and Floating-Point Issues in Splits](#bug-5-rounding-and-floating-point-issues-in-splits)
+- [Bug 6: Inverted Balance Labels](#bug-6-inverted-balance-labels)
+- [Bug 7: Date Hydration from Local Storage](#bug-7-date-hydration-from-local-storage)
+- [Bug 8: SummaryCards Stale Data](#bug-8-summarycards-stale-data)
+- [Bug 9: ISO String Date Formatting](#bug-9-iso-string-date-formatting)
+- [Bug 10: Form State and Timezone Shifts](#bug-10-form-state-and-timezone-shifts)
+- [Bug 11: Member ID String Concatenation](#bug-11-member-id-string-concatenation)
 
 ---
 
-## Bug 1
+## Bug 1: Expense List Sorting
 
 **How to reproduce:** Open the app. The expense list says “Newest first”. The first row is Wine (7 Mar). Board game (15 Mar) is further down.
 
-**What is wrong:** The list is showing the expenses in the original unsorted order (oldest first). This happened for two reasons: the sort order was configured to show oldest first, and the sorting mechanism was completely broken because `dateValue` was returning a string instead of a numeric timestamp. Subtracting strings in JavaScript results in `NaN`, which breaks the sort function.
+**What is wrong:** The list is rendering the expenses in their original, unsorted insertion order (oldest first). This UI bug occurred due to two critical issues: first, the initial configuration state erroneously defaulted to an oldest-first paradigm despite the UI indicating otherwise; second, the internal sorting function completely failed because `dateValue` was erroneously returning a raw string. When JavaScript attempts to subtract strings during a sorting pass, it yields `NaN`, which breaks the sort comparator entirely.
 
 **What I changed:** 
 1. In `src/lib/format.js`, I updated `dateValue` to return a numeric timestamp using `new Date(date).getTime()`. 
@@ -18,41 +29,39 @@ Keep this file in the repo and **commit it** with your fixes.
 
 ---
 
-## Bug 2
+## Bug 2: Paid By Filter Type Mismatch
 
-**How to reproduce:** Select a person from the "Paid by" dropdown in the Filter section to filter expenses by who paid them.
+**How to reproduce:** In the Filter section, use the "Paid by" dropdown to isolate expenses paid by a specific person. The expense list will unexpectedly empty out and show zero results, regardless of who is selected.
 
-**What is wrong:** The filter doesn't show any expenses because the value from the select dropdown is a string (e.g., `"1"`), but the expense `paidBy` id is a number (e.g., `1`). The strict inequality check (`!==`) fails due to this type mismatch, filtering out all expenses.
+**What is wrong:** The filter logic is performing a strict type comparison (`!==`), but the data types are mismatched. The HTML `<select>` element inherently yields string values (e.g., `"1"`), whereas the internal expense objects store the `paidBy` identifier as an integer (e.g., `1`). Because `"1" !== 1` evaluates to true in a strict context, every single expense is filtered out of the view.
 
 **What I changed:** In `src/App.jsx`, I wrapped the `paidBy` value with `Number()` during the filter check: `e.paidBy !== Number(paidBy)`.
 
 ---
 
-## Bug 3
+## Bug 3: Deductions for Non-Participating Payers
 
-**How to reproduce:** Create an expense where the person who paid is not explicitly included in the split.
+**How to reproduce:** Create a new expense where the individual who paid the bill is deliberately excluded from the "Split between" list (e.g., Alice pays for Bob and Charlie's meal, but didn't eat herself).
 
 **What is wrong:** If the payer was not in the split list, a share was incorrectly deducted from their balance anyway.
 
-**What I changed:** In `src/lib/balances.js`, removed the erroneous `if` block that deducted a share from the payer if they weren't in the split list.
+**What I changed:** In `src/lib/balances.js`, I located and entirely removed the erroneous `if` block that was responsible for blindly penalizing the payer. The balance engine now strictly calculates deductions based solely on the individuals officially checked in the split list.
 
 ---
 
-## Bug 4
+## Bug 4: Missing Transfers on Exact Settlement Matches
 
-**How to reproduce:** Create a scenario where a debtor owes the exact same amount a creditor is owed.
+**How to reproduce:** Log expenses in such a way that one person is owed an exact dollar amount, and another person happens to owe that exact same dollar amount (a perfect 1:1 match).
 
-**What is wrong:** The settlement algorithm successfully matches the debtor and creditor but entirely skips recording the actual transfer.
+**What is wrong:** The `settle` algorithm uses a two-pointer approach to match debtors with creditors. When the algorithm encountered a perfect match (where the debt exactly equaled the credit), it successfully updated the pointers to move to the next individuals, but completely failed to push the actual transfer record into the final array. This resulted in "lost" money that was never accounted for in the UI.
 
-**What I changed:** In `src/lib/settle.js`, added the missing `transfers.push(...)` block in the `else` case when the amounts perfectly match.
+**What I changed:** In `src/lib/settle.js`, I amended the `else` condition (which triggers on an exact match) to properly assemble the transfer object and execute `transfers.push(...)` before incrementing the `i` and `j` pointers.
 
 ---
 
-## Bug 5
+## Bug 5: Rounding and Floating-Point Issues in Splits
 
-**How to reproduce:** 
-1. Log an expense of $100 split equally among 3 people. Each person was assigned $33.33, totaling $99.99, losing $0.01 from the group total.
-2. Enter custom percentage splits such as `33.33%`, `33.33%`, and `33.34%`. The form rejects submission with *"Percentages must add to 100"* due to IEEE 754 float representation `100.00000000000001`.
+**How to reproduce:** 1. Log an expense of $100 split equally among 3 people. Each person is assigned $33.33, totaling $99.99, losing $0.01 from the group total. 2. Enter custom percentage splits such as `33.33%`, `33.33%`, and `33.34%`. The form rejects submission with *"Percentages must add to 100"* due to IEEE 754 float representation `100.00000000000001`.
 
 **What is wrong:** 
 1. `splitEqual()` in `src/lib/money.js` performed simple division and fixed-point rounding without distributing remainder cents across participants.
@@ -64,47 +73,47 @@ Keep this file in the repo and **commit it** with your fixes.
 
 ---
 
-## Bug 6
+## Bug 6: Inverted Balance Labels
 
-**How to reproduce:** Look at the "Balances" section on the right side of the app. Look for anyone who paid for an expense.
+**How to reproduce:** Look at the "Balances" panel on the right side of the UI. Locate any user who has paid out more money than they have consumed.
 
-**What is wrong:** The app displays "owes" for users with a positive balance and "is owed" for users with a negative balance. This is backward—if you have a positive balance (you paid for others more than you consumed), you are *owed* money.
+**What is wrong:** The application fundamentally misunderstood the polarity of balances. It displayed the text "owes" for users with a mathematically positive balance, and "is owed" for users with a negative balance. A positive balance indicates the user is in credit (they overpaid relative to their consumption) and should therefore be *owed* money by the group.
 
-**What I changed:** In `src/components/BalancesPanel.jsx`, I swapped the labels and CSS classes inside the `if` conditions so that `bal > 0.005` maps to "is owed" and `bal < -0.005` maps to "owes".
-
----
-
-## Bug 7
-
-**How to reproduce:** Add new expenses and refresh the browser page. The dates in the expense list fallback to raw string slicing instead of formatted locale dates (`toLocaleDateString("en-IN")`).
-
-**What is wrong:** In `src/state/store.js`, `loadState()` returned `JSON.parse(raw)` directly when retrieving cached state from `localStorage`. Because `JSON.stringify` converts `Date` instances into ISO string primitives, the retrieved expenses contained strings for `date` instead of JavaScript `Date` objects, failing `date instanceof Date` checks.
-
-**What I changed:** Updated `loadState()` in `src/state/store.js` to pass `JSON.parse(raw)` through `hydrate()`, ensuring all expense dates are restored as valid `Date` objects upon page reloads.
+**What I changed:** In `src/components/BalancesPanel.jsx`, I inverted the threshold logic inside the rendering block. Now, if a user's balance evaluates to `bal > 0.005`, the component correctly maps it to the "is owed" label and associated CSS class, and correctly maps negative balances (`bal < -0.005`) to "owes".
 
 ---
 
-## Bug 8
+## Bug 7: Date Hydration from Local Storage
 
-**How to reproduce:** In the Summary panel, add a new member (e.g., "Eve"). The Members count increases from 4 to 5, but the "Paid so far" breakdown list does not show "Eve ($0.00)" and remains showing only the initial 4 members.
+**How to reproduce:** Add a few expenses, then perform a hard refresh on the browser tab. The dates in the expense list UI will silently degrade to raw sliced strings rather than localized, human-readable date formats.
 
-**What is wrong:** In `src/components/SummaryCards.jsx`, the `perPerson` calculation was memoized with `useMemo(..., [expenses])`, omitting `members` from the dependency array. When `members` changed, `perPerson` did not recompute.
+**What is wrong:** State persistence relied on standard `localStorage` serialization. In `src/state/store.js`, the `loadState()` function retrieved the cached state and blindly returned `JSON.parse(raw)`. Because `JSON.stringify` permanently flattens `Date` objects into ISO strings, the rehydrated state contained string primitives rather than JavaScript `Date` instances, which subsequently caused `instanceof Date` checks in the UI formatters to fail.
 
-**What I changed:** Added `members` to the `useMemo` dependency array (`[members, expenses]`) and used type-safe comparison `String(e.paidBy) === String(m.id)` in `src/components/SummaryCards.jsx`.
-
----
-
-## Bug 9
-
-**How to reproduce:** When date strings (e.g., `"2026-03-12"`) are passed to `formatDate()`, they are displayed in raw unformatted ISO format (`"2026-03-12"`) rather than the application's standard formatted date string (`"12 Mar 2026"`).
-
-**What is wrong:** `formatDate()` in `src/lib/format.js` checked `if (typeof date === "string") return date.slice(0, 10);`, bypassing locale date formatting for string inputs.
-
-**What I changed:** Updated `formatDate()` in `src/lib/format.js` to parse string date inputs into `Date` instances and format them consistently using `toLocaleDateString("en-IN")`.
+**What I changed:** I intercepted the raw parsed JSON in `src/state/store.js` and wrapped it in a `hydrate()` pipeline before returning it. This hydration step iterates over the stored expenses array and explicitly reconstructs proper `new Date()` instances from the ISO strings, ensuring the application state remains robust across reloads.
 
 ---
 
-## Bug 10
+## Bug 8: SummaryCards Stale Data
+
+**How to reproduce:** Inside the Summary panel, create a new member (e.g., "Eve"). The total "Members" metric increments correctly, but the detailed "Paid so far" breakdown list fails to append the new member.
+
+**What is wrong:** In `src/components/SummaryCards.jsx`, the internal `perPerson` array was tightly memoized using a `useMemo` hook that exclusively tracked changes to `[expenses]`. Because it failed to declare `members` as a dependency, the React reconciliation engine refused to recalculate the breakdown when the group roster changed, leading to stale UI state.
+
+**What I changed:** I corrected the React hook dependency array by declaring `[members, expenses]` to ensure the block evaluates whenever the roster expands. Additionally, I fortified the paid-by filter loop inside the memoized block by enforcing string parity `String(e.paidBy) === String(m.id)` to safeguard against hidden type collisions.
+
+---
+
+## Bug 9: ISO String Date Formatting
+
+**How to reproduce:** Inject a raw date string (e.g., `"2026-03-12"`) into `formatDate()`. The UI will output the raw string `"2026-03-12"` instead of applying the standard `"12 Mar 2026"` localization mask.
+
+**What is wrong:** The `formatDate()` utility function in `src/lib/format.js` possessed an overly aggressive string-handler fallback. If it detected a string type, it immediately short-circuited and executed `date.slice(0, 10)`, completely bypassing the `toLocaleDateString` engine meant to standardize the visual presentation of dates across the app.
+
+**What I changed:** I rewrote the primary `formatDate()` guard logic in `src/lib/format.js`. The function now aggressively coerces string payloads into full `Date` instances via `new Date(date)` prior to evaluation. This guarantees that all inputs are routed through the `toLocaleDateString("en-IN")` formatter for a unified user experience.
+
+---
+
+## Bug 10: Form State and Timezone Shifts
 
 **How to reproduce:** 
 1. Fill out the "Add expense" form and click "Save expense". The expense is added, but the description and amount fields retain their previous values instead of clearing.
@@ -120,12 +129,10 @@ Keep this file in the repo and **commit it** with your fixes.
 
 ---
 
-## Bug 11
+## Bug 11: Member ID String Concatenation
 
-**How to reproduce:** Attempt to add a new member. If the current highest member ID is a string (e.g., `"4"`), the new member will receive an ID of `"41"` instead of `5`.
+**How to reproduce:** Register a new group member. If the current highest member ID in the system happens to be stored as a string (e.g., `"10"`), the newly generated ID will erroneously evaluate to `"101"` instead of `11`.
 
-**What is wrong:** In `src/state/store.js`, the `nextMemberId` function evaluated `x.id > m`, which acts as a string comparison if `x.id` is a string. `max` was then set to that string, causing `max + 1` to perform string concatenation (e.g., `"4" + 1 = "41"`).
+**What is wrong:** In `src/state/store.js`, the `nextMemberId` function utilized a generic greater-than operator (`x.id > m`) to establish the maximum ID. If `x.id` was a string type, JavaScript evaluated the comparison as a string comparison, and ultimately stored the string primitive into the `max` variable. When the script attempted to increment `max + 1`, JavaScript executed string concatenation rather than mathematical addition.
 
-**What I changed:** Updated `nextMemberId` in `src/state/store.js` to cast IDs to Numbers `(Number(x.id) > m ? Number(x.id) : m)` so `max` is always a proper Number, preventing string concatenation.
-
----
+**What I changed:** I introduced strict runtime type coercion within the `nextMemberId` reduce loop in `src/state/store.js`. By wrapping the variables as `Number(x.id)`, the system is mathematically guaranteed to calculate and store a numeric primitive in `max`, preventing accidental string concatenation when generating subsequent unique identifiers.
