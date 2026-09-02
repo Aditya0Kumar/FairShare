@@ -10,9 +10,11 @@ Keep this file in the repo and **commit it** with your fixes.
 
 **How to reproduce:** Open the app. The expense list says “Newest first”. The first row is Wine (7 Mar). Board game (15 Mar) is further down.
 
-**What is wrong:** The list is showing oldest expenses first. Newest should be at the top.
+**What is wrong:** The list is showing the expenses in the original unsorted order (oldest first). This happened for two reasons: the sort order was configured to show oldest first, and the sorting mechanism was completely broken because `dateValue` was returning a string instead of a numeric timestamp. Subtracting strings in JavaScript results in `NaN`, which breaks the sort function.
 
-**What I changed:**
+**What I changed:** 
+1. In `src/lib/format.js`, I updated `dateValue` to return a numeric timestamp using `new Date(date).getTime()`. 
+2. In `src/components/ExpenseList.jsx`, I changed the sorting logic to subtract `a.date` from `b.date` (`dateValue(b.date) - dateValue(a.date)`), sorting the expenses descending by date (newest first).
 
 ---
 
