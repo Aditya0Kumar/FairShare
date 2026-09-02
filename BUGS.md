@@ -43,3 +43,13 @@ Keep this file in the repo and **commit it** with your fixes.
 3. In `src/lib/money.js`, updated `splitEqual` to calculate the remainder and assign it to the last person in the split to ensure the total perfectly matches the expense amount.
 
 ---
+
+## Bug 4
+
+**How to reproduce:** Look at the "Balances" section on the right side of the app. Look for anyone who paid for an expense.
+
+**What is wrong:** The app displays "owes" for users with a positive balance and "is owed" for users with a negative balance. This is backward—if you have a positive balance (you paid for others more than you consumed), you are *owed* money.
+
+**What I changed:** In `src/components/BalancesPanel.jsx`, I swapped the labels and CSS classes inside the `if` conditions so that `bal > 0.005` maps to "is owed" and `bal < -0.005` maps to "owes".
+
+---
