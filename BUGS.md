@@ -93,3 +93,13 @@ Keep this file in the repo and **commit it** with your fixes.
 **What I changed:** Added `members` to the `useMemo` dependency array (`[members, expenses]`) and used type-safe comparison `String(e.paidBy) === String(m.id)` in `src/components/SummaryCards.jsx`.
 
 ---
+
+## Bug 9
+
+**How to reproduce:** When date strings (e.g., `"2026-03-12"`) are passed to `formatDate()`, they are displayed in raw unformatted ISO format (`"2026-03-12"`) rather than the application's standard formatted date string (`"12 Mar 2026"`).
+
+**What is wrong:** `formatDate()` in `src/lib/format.js` checked `if (typeof date === "string") return date.slice(0, 10);`, bypassing locale date formatting for string inputs.
+
+**What I changed:** Updated `formatDate()` in `src/lib/format.js` to parse string date inputs into `Date` instances and format them consistently using `toLocaleDateString("en-IN")`.
+
+---
