@@ -9,8 +9,15 @@ export function splitEqual(amount, ids) {
   const n = ids.length || 1;
   const share = Number((amount / n).toFixed(2));
   const shares = {};
-  for (const id of ids) {
-    shares[id] = share;
+  let sum = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (i === ids.length - 1) {
+      shares[id] = Number((amount - sum).toFixed(2));
+    } else {
+      shares[id] = share;
+      sum += share;
+    }
   }
   return shares;
 }
