@@ -119,3 +119,13 @@ Keep this file in the repo and **commit it** with your fixes.
 2. Updated the date construction to `new Date(date + "T00:00:00")` so that the local browser timezone is correctly assumed when parsing the date string.
 
 ---
+
+## Bug 11
+
+**How to reproduce:** Attempt to add a new member. If the current highest member ID is a string (e.g., `"4"`), the new member will receive an ID of `"41"` instead of `5`.
+
+**What is wrong:** In `src/state/store.js`, the `nextMemberId` function evaluated `x.id > m`, which acts as a string comparison if `x.id` is a string. `max` was then set to that string, causing `max + 1` to perform string concatenation (e.g., `"4" + 1 = "41"`).
+
+**What I changed:** Updated `nextMemberId` in `src/state/store.js` to cast IDs to Numbers `(Number(x.id) > m ? Number(x.id) : m)` so `max` is always a proper Number, preventing string concatenation.
+
+---

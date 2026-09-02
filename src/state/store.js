@@ -34,7 +34,7 @@ export function nextExpenseId() {
 }
 
 export function nextMemberId(members) {
-  const max = members.reduce((m, x) => (x.id > m ? x.id : m), 0);
+  const max = members.reduce((m, x) => (Number(x.id) > m ? Number(x.id) : m), 0);
   return max + 1;
 }
 
