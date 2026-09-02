@@ -15,6 +15,7 @@ This document tracks all the identified bugs in FairShare and details the steps 
 - [Bug 10: Form State and Timezone Shifts](#bug-10-form-state-and-timezone-shifts)
 - [Bug 11: Member ID String Concatenation](#bug-11-member-id-string-concatenation)
 - [Bug 12: Static Header Description Text](#bug-12-static-header-description-text)
+- [Bug 13: Array Index Mutation Target](#bug-13-array-index-mutation-target)
 
 ---
 
@@ -147,3 +148,13 @@ This document tracks all the identified bugs in FairShare and details the steps 
 **What is wrong:** The subtitle text in the header was permanently hardcoded in the JSX markup, rendering it entirely ignorant of the application's actual dynamic state and member roster length.
 
 **What I changed:** I swapped out the static hardcoded header description string in `src/App.jsx` for an inline dynamic JSX expression that evaluates and displays the correct count in real-time: `Shared expenses for {state.members.length} friends.`.
+
+---
+
+## Bug 13: Array Index Mutation Target
+
+**How to reproduce:** Create several expenses. Try deleting or editing the amount of an expense in the list. Often, an entirely different expense will be modified or deleted instead of the one you clicked on.
+
+**What is wrong:** The `ExpenseList.jsx` component generated the list UI by first sorting the expenses by date, but it passed the mapped array *index* of the sorted array back to the reducer. The reducer in `store.js` blindly used this index with `splice()` on the unsorted global state array, effectively mutating or deleting a completely unrelated expense.
+
+**What I changed:** In `src/components/ExpenseList.jsx`, I updated the mapping function to pass the unique `expense.id` back through `onDelete` and `onUpdate`. In `src/App.jsx`, I updated the payload to dispatch `id` instead of `index`. Finally, in `src/state/store.js`, I rewrote the `DELETE_EXPENSE` and `UPDATE_EXPENSE` reducers to locate and mutate elements by their unique `id` (using `.filter()` and `.map()`) rather than array indexing.
