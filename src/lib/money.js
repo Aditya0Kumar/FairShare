@@ -24,13 +24,22 @@ export function splitEqual(amount, ids) {
 
 export function percentsSumTo100(percents) {
   const values = Object.values(percents).map(Number);
-  return values.reduce((a, b) => a + b, 0) === 100;
+  return Math.abs(values.reduce((a, b) => a + b, 0) - 100) < 0.01;
 }
 
 export function splitByPercent(amount, percents) {
   const shares = {};
-  for (const [id, pct] of Object.entries(percents)) {
-    shares[id] = Number(((amount * Number(pct)) / 100).toFixed(2));
+  const entries = Object.entries(percents);
+  let sum = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const [id, pct] = entries[i];
+    if (i === entries.length - 1) {
+      shares[id] = Number((amount - sum).toFixed(2));
+    } else {
+      const share = Number(((amount * Number(pct)) / 100).toFixed(2));
+      shares[id] = share;
+      sum += share;
+    }
   }
   return shares;
 }

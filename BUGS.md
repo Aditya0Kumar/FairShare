@@ -50,11 +50,17 @@ Keep this file in the repo and **commit it** with your fixes.
 
 ## Bug 5
 
-**How to reproduce:** Create an expense that doesn't divide equally into cents (e.g. $100 split 3 ways).
+**How to reproduce:** 
+1. Log an expense of $100 split equally among 3 people. Each person was assigned $33.33, totaling $99.99, losing $0.01 from the group total.
+2. Enter custom percentage splits such as `33.33%`, `33.33%`, and `33.34%`. The form rejects submission with *"Percentages must add to 100"* due to IEEE 754 float representation `100.00000000000001`.
 
-**What is wrong:** When splitting amounts equally, rounding errors left cents unaccounted for (e.g. $100 / 3 = $33.33 each, giving a $99.99 total), leaving the group's total balances slightly off.
+**What is wrong:** 
+1. `splitEqual()` in `src/lib/money.js` performed simple division and fixed-point rounding without distributing remainder cents across participants.
+2. `percentsSumTo100()` in `src/lib/money.js` used strict equality `=== 100` rather than floating-point tolerance check.
 
-**What I changed:** In `src/lib/money.js`, updated `splitEqual` to calculate the exact remainder and assign it to the last person in the split to ensure the sum perfectly matches the total expense amount.
+**What I changed:** 
+1. Refactored `splitEqual()` and `splitByPercent()` in `src/lib/money.js` to allocate exact cent-level shares and distribute any remainder cents so the sum of individual shares always precisely equals the full bill amount.
+2. Updated `percentsSumTo100()` to use `Math.abs(sum - 100) < 0.01` to safely accommodate floating-point variations.
 
 ---
 
@@ -65,5 +71,15 @@ Keep this file in the repo and **commit it** with your fixes.
 **What is wrong:** The app displays "owes" for users with a positive balance and "is owed" for users with a negative balance. This is backward—if you have a positive balance (you paid for others more than you consumed), you are *owed* money.
 
 **What I changed:** In `src/components/BalancesPanel.jsx`, I swapped the labels and CSS classes inside the `if` conditions so that `bal > 0.005` maps to "is owed" and `bal < -0.005` maps to "owes".
+
+---
+
+## Bug 7
+
+**How to reproduce:** Add new expenses and refresh the browser page. The dates in the expense list fallback to raw string slicing instead of formatted locale dates (`toLocaleDateString("en-IN")`).
+
+**What is wrong:** In `src/state/store.js`, `loadState()` returned `JSON.parse(raw)` directly when retrieving cached state from `localStorage`. Because `JSON.stringify` converts `Date` instances into ISO string primitives, the retrieved expenses contained strings for `date` instead of JavaScript `Date` objects, failing `date instanceof Date` checks.
+
+**What I changed:** Updated `loadState()` in `src/state/store.js` to pass `JSON.parse(raw)` through `hydrate()`, ensuring all expense dates are restored as valid `Date` objects upon page reloads.
 
 ---
