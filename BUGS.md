@@ -83,3 +83,13 @@ Keep this file in the repo and **commit it** with your fixes.
 **What I changed:** Updated `loadState()` in `src/state/store.js` to pass `JSON.parse(raw)` through `hydrate()`, ensuring all expense dates are restored as valid `Date` objects upon page reloads.
 
 ---
+
+## Bug 8
+
+**How to reproduce:** In the Summary panel, add a new member (e.g., "Eve"). The Members count increases from 4 to 5, but the "Paid so far" breakdown list does not show "Eve ($0.00)" and remains showing only the initial 4 members.
+
+**What is wrong:** In `src/components/SummaryCards.jsx`, the `perPerson` calculation was memoized with `useMemo(..., [expenses])`, omitting `members` from the dependency array. When `members` changed, `perPerson` did not recompute.
+
+**What I changed:** Added `members` to the `useMemo` dependency array (`[members, expenses]`) and used type-safe comparison `String(e.paidBy) === String(m.id)` in `src/components/SummaryCards.jsx`.
+
+---
