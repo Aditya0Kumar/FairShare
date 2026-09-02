@@ -72,7 +72,7 @@ export default function App() {
           <div className="eyebrow">FairShare</div>
           <h1>{state.groupName}</h1>
           <p className="subtitle">
-            Shared expenses for four friends. Numbers and labels should match
+            Shared expenses for {state.members.length} friends. Numbers and labels should match
             the spec in the README.
           </p>
         </div>

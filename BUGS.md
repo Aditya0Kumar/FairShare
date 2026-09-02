@@ -14,6 +14,7 @@ This document tracks all the identified bugs in FairShare and details the steps 
 - [Bug 9: ISO String Date Formatting](#bug-9-iso-string-date-formatting)
 - [Bug 10: Form State and Timezone Shifts](#bug-10-form-state-and-timezone-shifts)
 - [Bug 11: Member ID String Concatenation](#bug-11-member-id-string-concatenation)
+- [Bug 12: Static Header Description Text](#bug-12-static-header-description-text)
 
 ---
 
@@ -136,3 +137,13 @@ This document tracks all the identified bugs in FairShare and details the steps 
 **What is wrong:** In `src/state/store.js`, the `nextMemberId` function utilized a generic greater-than operator (`x.id > m`) to establish the maximum ID. If `x.id` was a string type, JavaScript evaluated the comparison as a string comparison, and ultimately stored the string primitive into the `max` variable. When the script attempted to increment `max + 1`, JavaScript executed string concatenation rather than mathematical addition.
 
 **What I changed:** I introduced strict runtime type coercion within the `nextMemberId` reduce loop in `src/state/store.js`. By wrapping the variables as `Number(x.id)`, the system is mathematically guaranteed to calculate and store a numeric primitive in `max`, preventing accidental string concatenation when generating subsequent unique identifiers.
+
+---
+
+## Bug 12: Static Header Description Text
+
+**How to reproduce:** Look at the static description text inside the main header container. Add a fifth or sixth member to the group roster using the Summary panel. The topbar incorrectly continues to claim the app is tracking "Shared expenses for four friends".
+
+**What is wrong:** The subtitle text in the header was permanently hardcoded in the JSX markup, rendering it entirely ignorant of the application's actual dynamic state and member roster length.
+
+**What I changed:** I swapped out the static hardcoded header description string in `src/App.jsx` for an inline dynamic JSX expression that evaluates and displays the correct count in real-time: `Shared expenses for {state.members.length} friends.`.
