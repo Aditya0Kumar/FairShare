@@ -18,10 +18,10 @@ Keep this file in the repo and **commit it** with your fixes.
 
 ## Bug 2
 
-**How to reproduce:**
+**How to reproduce:** Select a person from the "Paid by" dropdown in the Filter section to filter expenses by who paid them.
 
-**What is wrong:**
+**What is wrong:** The filter doesn't show any expenses because the value from the select dropdown is a string (e.g., `"1"`), but the expense `paidBy` id is a number (e.g., `1`). The strict inequality check (`!==`) fails due to this type mismatch, filtering out all expenses.
 
-**What I changed:**
+**What I changed:** In `src/App.jsx`, I wrapped the `paidBy` value with `Number()` during the filter check: `e.paidBy !== Number(paidBy)`.
 
 ---
