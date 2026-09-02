@@ -103,3 +103,19 @@ Keep this file in the repo and **commit it** with your fixes.
 **What I changed:** Updated `formatDate()` in `src/lib/format.js` to parse string date inputs into `Date` instances and format them consistently using `toLocaleDateString("en-IN")`.
 
 ---
+
+## Bug 10
+
+**How to reproduce:** 
+1. Fill out the "Add expense" form and click "Save expense". The expense is added, but the description and amount fields retain their previous values instead of clearing.
+2. Select a specific date for an expense (e.g., "Mar 16 2026"). Depending on your timezone, the expense may appear in the list as being from the day before (e.g., "Mar 15 2026").
+
+**What is wrong:** 
+1. The `submit` handler in `src/components/AddExpenseForm.jsx` never reset the state for `description` or `amount` after successfully calling `onAdd`.
+2. Parsing the date string directly with `new Date(date)` (e.g. `new Date("2026-03-16")`) defaults to UTC midnight, which shifts backward into the previous day when displayed in timezones behind UTC.
+
+**What I changed:** 
+1. Added `setDescription("")` and `setAmount("")` to the end of the `submit` function in `src/components/AddExpenseForm.jsx`.
+2. Updated the date construction to `new Date(date + "T00:00:00")` so that the local browser timezone is correctly assumed when parsing the date string.
+
+---
