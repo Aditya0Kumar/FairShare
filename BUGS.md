@@ -30,21 +30,35 @@ Keep this file in the repo and **commit it** with your fixes.
 
 ## Bug 3
 
-**How to reproduce:** Create an expense where the person who paid is not part of the split. Or create an expense that doesn't divide equally (e.g. $100 split 3 ways). Or create a scenario where someone owes exactly what they are owed.
+**How to reproduce:** Create an expense where the person who paid is not explicitly included in the split.
 
-**What is wrong:** The financial logic had three bugs: 
-1. If the payer was not in the split, a share was incorrectly deducted from their balance.
-2. If a debtor owed the exact same amount a creditor was owed, the settlement algorithm skipped recording the transfer.
-3. When splitting amounts equally, rounding errors left cents unaccounted for (e.g. $100 / 3 = $99.99 total), leaving the group's total balances off by a few cents.
+**What is wrong:** If the payer was not in the split list, a share was incorrectly deducted from their balance anyway.
 
-**What I changed:** 
-1. In `src/lib/balances.js`, removed the erroneous `if` block that deducted a share from the payer if they weren't in the split list.
-2. In `src/lib/settle.js`, added the missing `transfers.push(...)` block in the `else` case when amounts perfectly match.
-3. In `src/lib/money.js`, updated `splitEqual` to calculate the remainder and assign it to the last person in the split to ensure the total perfectly matches the expense amount.
+**What I changed:** In `src/lib/balances.js`, removed the erroneous `if` block that deducted a share from the payer if they weren't in the split list.
 
 ---
 
 ## Bug 4
+
+**How to reproduce:** Create a scenario where a debtor owes the exact same amount a creditor is owed.
+
+**What is wrong:** The settlement algorithm successfully matches the debtor and creditor but entirely skips recording the actual transfer.
+
+**What I changed:** In `src/lib/settle.js`, added the missing `transfers.push(...)` block in the `else` case when the amounts perfectly match.
+
+---
+
+## Bug 5
+
+**How to reproduce:** Create an expense that doesn't divide equally into cents (e.g. $100 split 3 ways).
+
+**What is wrong:** When splitting amounts equally, rounding errors left cents unaccounted for (e.g. $100 / 3 = $33.33 each, giving a $99.99 total), leaving the group's total balances slightly off.
+
+**What I changed:** In `src/lib/money.js`, updated `splitEqual` to calculate the exact remainder and assign it to the last person in the split to ensure the sum perfectly matches the total expense amount.
+
+---
+
+## Bug 6
 
 **How to reproduce:** Look at the "Balances" section on the right side of the app. Look for anyone who paid for an expense.
 
